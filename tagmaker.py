@@ -52,19 +52,30 @@ def main():
     batch_path = 'batch{:03d}'.format(batch_num)
     os.mkdir(batch_path)
 
-    processed = []
     workers = []
-    for row in data:
-        gen = template.render(nome=row[0], empresa=row[1])
-        base_name = os.path.join(batch_path, ','.join(row))
+    outnames = []
+    def write_out(base_name, text):
         svg_name = base_name + '.svg'
         pdf_name = base_name + '.pdf'
         with open(svg_name, 'w') as output:
             output.write(gen)
         workers.append(subprocess.Popen(['inkscape', '-z', '-f={}'.format(svg_name), '-A={}.pdf'.format(base_name)]))
-        processed.append(row)
+        outnames.append(pdf_name)
 
-    listing_text = '\n'.join(map(','.join, processed)) + '\n'
+    for row in data:
+        gen = template.render(nome=row[0], empresa=row[1])
+        base_name = os.path.join(batch_path, ','.join(row).replace('/', '_'))
+        write_out(base_name, gen)
+
+    blank_tags = (8 - (len(data) % 8)) % 8
+    if blank_tags:
+        gen = template.render(nome='', empresa='')
+        write_out('blank', gen)
+        outnames += [outnames[-1]] * (blank_tags - 1)
+        print(blank_tags)
+        print(outnames)
+
+    listing_text = '\n'.join(map(','.join, data)) + '\n'
     print("Processed:")
     print(listing_text)
 
@@ -78,7 +89,10 @@ def main():
     for w in workers:
         w.wait()
 
-    #TODO: cluster output for printing....
+    group_cmd = "pdfnup --suffix nup --nup '2x4' --paper a4paper --no-landscape --noautoscale true --frame true --outfile {} -- ".format(os.path.join(batch_path, 'to_print.pdf')) + ' '.join(map('"{}"'.format, outnames))
+    print(group_cmd)
+
+    os.system(group_cmd)
 
     print('Done.')
 
