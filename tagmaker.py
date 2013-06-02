@@ -72,8 +72,6 @@ def main():
         gen = template.render(nome='', empresa='')
         write_out('blank', gen)
         outnames += [outnames[-1]] * (blank_tags - 1)
-        print(blank_tags)
-        print(outnames)
 
     listing_text = '\n'.join(map(','.join, data)) + '\n'
     print("Processed:")
