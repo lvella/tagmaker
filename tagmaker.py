@@ -12,6 +12,7 @@ import sys
 import csv
 import re
 import subprocess
+import itertools
 import jinja2
 
 parser = re.compile(r'Batch (?P<number>\d+):\n(?P<csv>(.*?,.*?\n)+)')
@@ -37,7 +38,9 @@ def main():
         sys.exit(1)
 
     template = jinja2.Template(open('template.svg', 'r').read())
-    data = set(map(tuple, csv.reader(open('data.csv', 'r'))))
+    reader = csv.reader(open('data.csv', 'r'))
+    variables = next(reader)
+    data = set(map(tuple, reader))
 
     status = open('generated_status.txt', 'a+')
     status.seek(0)
@@ -63,13 +66,14 @@ def main():
         outnames.append(pdf_name)
 
     for row in data:
-        gen = template.render(nome=row[0], empresa=row[1])
+        kwargs = dict(zip(variables, row))
+        gen = template.render(**kwargs)
         base_name = os.path.join(batch_path, ','.join(row).replace('/', '_'))
         write_out(base_name, gen)
 
     blank_tags = (8 - (len(data) % 8)) % 8
     if blank_tags:
-        gen = template.render(nome='', empresa='')
+        gen = template.render(**dict(zip(variables, itertools.repeat(''))))
         write_out('blank', gen)
         outnames += [outnames[-1]] * (blank_tags - 1)
 
